@@ -1,4 +1,4 @@
-module github.com/go-ldap/ldap
+module github.com/latortuga71/ldap
 
 go 1.14
 
