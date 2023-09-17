@@ -98,7 +98,7 @@ type Conn struct {
 	// so we need to ensure 64-bit alignment on 32-bit platforms.
 	// https://github.com/go-ldap/ldap/pull/199
 	requestTimeout      int64
-	conn                net.Conn
+	Conn                net.Conn
 	isTLS               bool
 	closing             uint32
 	closeErr            atomic.Value
@@ -250,7 +250,7 @@ func DialURL(addr string, opts ...DialOpt) (*Conn, error) {
 // NewConn returns a new Conn using conn for network I/O.
 func NewConn(conn net.Conn, isTLS bool) *Conn {
 	l := &Conn{
-		conn:            conn,
+		Conn:            conn,
 		chanConfirm:     make(chan struct{}),
 		chanMessageID:   make(chan int64),
 		chanMessage:     make(chan *messagePacket, 10),
@@ -303,7 +303,7 @@ func (l *Conn) Close() (err error) {
 		close(l.chanMessage)
 
 		l.Debug.Printf("Closing network connection")
-		err = l.conn.Close()
+		err = l.Conn.Close()
 		l.wgClose.Done()
 	}
 	l.wgClose.Wait()
@@ -376,7 +376,7 @@ func (l *Conn) StartTLS(config *tls.Config) error {
 	}
 
 	if err := GetLDAPError(packet); err == nil {
-		conn := tls.Client(l.conn, config)
+		conn := tls.Client(l.Conn, config)
 
 		if connErr := conn.Handshake(); connErr != nil {
 			l.Close()
@@ -384,7 +384,7 @@ func (l *Conn) StartTLS(config *tls.Config) error {
 		}
 
 		l.isTLS = true
-		l.conn = conn
+		l.Conn = conn
 	} else {
 		return err
 	}
@@ -397,7 +397,7 @@ func (l *Conn) StartTLS(config *tls.Config) error {
 // The return values are their zero values if StartTLS did
 // not succeed.
 func (l *Conn) TLSConnectionState() (state tls.ConnectionState, ok bool) {
-	tc, ok := l.conn.(*tls.Conn)
+	tc, ok := l.Conn.(*tls.Conn)
 	if !ok {
 		return
 	}
@@ -515,7 +515,7 @@ func (l *Conn) processMessages() {
 				l.Debug.Printf("Sending message %d", message.MessageID)
 
 				buf := message.Packet.Bytes()
-				_, err := l.conn.Write(buf)
+				_, err := l.Conn.Write(buf)
 				if err != nil {
 					l.Debug.Printf("Error Sending Message: %s", err.Error())
 					message.Context.sendResponse(&PacketResponse{Error: fmt.Errorf("unable to send request: %s", err)}, time.Duration(l.getTimeout()))
@@ -589,7 +589,7 @@ func (l *Conn) reader() {
 		}
 	}()
 
-	bufConn := bufio.NewReader(l.conn)
+	bufConn := bufio.NewReader(l.Conn)
 	for {
 		if cleanstop {
 			l.Debug.Printf("reader clean stopping (without closing the connection)")
